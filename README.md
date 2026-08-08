@@ -2,7 +2,7 @@
 
 A sentiment classifier for movie reviews — full NLP preprocessing pipeline, TF-IDF vectorization, and a recurrent neural network trained in PyTorch to predict positive vs. negative sentiment.
 
-> 📊 **[View the interactive project presentation](./presentation.html)** — pipeline walkthrough, architecture, and results in one page.
+> 📊 **[View the interactive project presentation](https://pallavi292929.github.io/rnn-sentiment-analysis/presentation.html)** — pipeline walkthrough, architecture, and results in one page.
 
 **Result: 85.67% test accuracy** on 9,917 held-out IMDB reviews.
 
