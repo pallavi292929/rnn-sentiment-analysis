@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMDB Sentiment Analysis — Project Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1c1420;
+    --panel:#251b29;
+    --panel-2:#2d2130;
+    --ink:#ede6da;
+    --ink-dim:#9c8fa0;
+    --positive:#7fa86f;
+    --negative:#c4515c;
+    --line:#3a2e3f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{ background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3{ font-family:'Newsreader', serif; font-weight:600; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+
+  .wrap{ max-width:960px; margin:0 auto; padding:0 32px; }
+
+  header.top{ padding:72px 0 44px; }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:12px; text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:16px; }
+  .eyebrow.pos{ color:var(--positive); }
+  h1{ font-size:48px; line-height:1.12; max-width:720px; font-style:italic; }
+  .sub{ font-size:17px; color:var(--ink-dim); max-width:600px; margin-top:18px; font-style:normal; }
+
+  .stat-row{ display:flex; gap:44px; margin-top:48px; flex-wrap:wrap; }
+  .stat .num{ font-family:'IBM Plex Mono', monospace; font-size:30px; color:var(--ink); }
+  .stat .label{ font-size:12px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+
+  section{ padding:68px 0; border-top:1px solid var(--line); }
+  h2{ font-size:30px; margin-bottom:20px; font-style:italic; }
+  p.lead{ font-size:16px; color:var(--ink-dim); max-width:660px; }
+
+  /* Manuscript transform - signature element */
+  .manuscript{ margin-top:36px; display:grid; gap:10px; }
+  .mrow{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px 22px; }
+  .mrow .mlabel{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px; }
+  .mrow .mtext{ font-size:15px; line-height:1.7; }
+  .mrow .mtext del{ color:#6b5f6e; text-decoration:line-through; text-decoration-color:var(--negative); }
+  .mrow .mtext mark{ background:transparent; color:var(--positive); font-weight:600; }
+  .mrow.final{ border-color:var(--positive); background:rgba(127,168,111,0.08); }
+
+  .pipeline-steps{ margin-top:14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+  .pcard{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px 18px; }
+  .pcard .n{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--positive); }
+  .pcard h3{ font-size:14px; margin:6px 0 4px; font-style:normal; }
+  .pcard p{ font-size:12.5px; color:var(--ink-dim); }
+
+  /* Architecture flow */
+  .arch-flow{ display:flex; align-items:center; gap:0; overflow-x:auto; margin-top:36px; padding-bottom:8px; }
+  .anode{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px; min-width:150px; flex-shrink:0; text-align:center; }
+  .anode .atitle{ font-weight:600; font-size:14px; }
+  .anode .adim{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--positive); margin-top:6px; }
+  .aarrow{ color:var(--ink-dim); font-size:20px; flex-shrink:0; width:34px; text-align:center; }
+
+  /* sentiment gauge */
+  .results-grid{ display:grid; grid-template-columns:260px 1fr; gap:56px; margin-top:32px; align-items:start; }
+  .gauge-wrap{ text-align:center; }
+  .gauge-wrap .acc{ font-family:'IBM Plex Mono', monospace; font-size:56px; color:var(--positive); }
+  .gauge-wrap .cap{ font-size:13px; color:var(--ink-dim); margin-top:8px; }
+  svg.chart{ width:100%; height:auto; }
+  .chart-caption{ font-size:13px; color:var(--ink-dim); margin-top:12px; }
+
+  .steps{ list-style:none; margin-top:24px; display:grid; gap:2px; }
+  .steps li{ display:flex; gap:20px; padding:18px 0; border-top:1px solid var(--line); }
+  .steps li:last-child{ border-bottom:1px solid var(--line); }
+  .steps .stitle{ font-family:'Newsreader', serif; font-weight:600; font-style:italic; font-size:16px; min-width:260px; color:var(--positive); }
+  .steps .sdesc{ font-size:14px; color:var(--ink-dim); }
+
+  footer{ padding:56px 0 96px; }
+  footer .fnote{ color:var(--ink-dim); font-size:13px; }
+
+  @media (max-width:760px){
+    h1{ font-size:34px; }
+    .results-grid{ grid-template-columns:1fr; }
+    .stat-row{ gap:28px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow pos">Natural Language Processing · PyTorch</span>
+    <h1>"One of the other reviewers has mentioned..." — positive, or negative?</h1>
+    <p class="sub">A full NLP pipeline that cleans raw movie reviews, vectorizes them with TF-IDF, and trains a recurrent neural network to call the sentiment.</p>
+
+    <div class="stat-row">
+      <div class="stat"><div class="num">85.67%</div><div class="label">Test Accuracy</div></div>
+      <div class="stat"><div class="num">49,582</div><div class="label">Reviews (deduped)</div></div>
+      <div class="stat"><div class="num">6</div><div class="label">Preprocessing Steps</div></div>
+      <div class="stat"><div class="num">5,000</div><div class="label">TF-IDF Features</div></div>
+    </div>
+  </header>
+
+  <section id="problem">
+    <span class="eyebrow pos">Problem Statement</span>
+    <h2>Raw review text is noisy. Models need it clean.</h2>
+    <p class="lead">The IMDB dataset packs 50,000 movie reviews labeled positive or negative — but straight from the source, that text is full of HTML leftovers, stray URLs, inconsistent punctuation and casing, and filler words that add noise without adding meaning. The real work of this project is building a preprocessing pipeline that strips all of that away before any model ever sees the text.</p>
+  </section>
+
+  <section id="approach">
+    <span class="eyebrow pos">Approach — Preprocessing Pipeline</span>
+    <h2>Six steps, applied to every single review.</h2>
+    <div class="pipeline-steps">
+      <div class="pcard"><div class="n">01</div><h3>Lowercase</h3><p>Normalizes casing across the whole corpus.</p></div>
+      <div class="pcard"><div class="n">02</div><h3>Remove URLs</h3><p>Strips any http links via regex.</p></div>
+      <div class="pcard"><div class="n">03</div><h3>Remove punctuation</h3><p>Keeps only letters, numbers, and spaces.</p></div>
+      <div class="pcard"><div class="n">04</div><h3>Remove HTML tags</h3><p>Cleans up leftover &lt;br /&gt;-style scrape artifacts.</p></div>
+      <div class="pcard"><div class="n">05</div><h3>Remove stopwords</h3><p>Tokenizes with NLTK, filters common English stopwords.</p></div>
+      <div class="pcard"><div class="n">06</div><h3>Stemming</h3><p>Reduces words to their root form with a Porter Stemmer.</p></div>
+    </div>
+
+    <div class="manuscript">
+      <div class="mrow">
+        <div class="mlabel">Illustrative example — raw review snippet</div>
+        <div class="mtext">"One of the other reviewers has mentioned that after watching just 1 Oz episode you'll be hooked. <del>&lt;br /&gt;&lt;br /&gt;</del> They are right, as this is exactly what happened with me."</div>
+      </div>
+      <div class="mrow final">
+        <div class="mlabel">After the full pipeline</div>
+        <div class="mtext"><mark>one revew mention watch 1 oz episod youll hook right exactli happen</mark></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="model">
+    <span class="eyebrow pos">Approach — Model</span>
+    <h2>TF-IDF vector in, sentiment out.</h2>
+    <p class="lead">Cleaned reviews are vectorized into a 5,000-dimensional TF-IDF representation, then passed through a single-layer RNN with a fully-connected output and sigmoid activation for binary classification.</p>
+    <div class="arch-flow">
+      <div class="anode"><div class="atitle">Cleaned Review</div><div class="adim">text</div></div>
+      <div class="aarrow">→</div>
+      <div class="anode"><div class="atitle">TF-IDF Vector</div><div class="adim">5,000 dims</div></div>
+      <div class="aarrow">→</div>
+      <div class="anode"><div class="atitle">RNN Layer</div><div class="adim">hidden = 128</div></div>
+      <div class="aarrow">→</div>
+      <div class="anode"><div class="atitle">Fully Connected</div><div class="adim">128 → 1</div></div>
+      <div class="aarrow">→</div>
+      <div class="anode"><div class="atitle">Sigmoid</div><div class="adim">P(positive)</div></div>
+    </div>
+  </section>
+
+  <section id="results">
+    <span class="eyebrow pos">Results</span>
+    <h2>85.67% test accuracy after 10 epochs.</h2>
+    <div class="results-grid">
+      <div class="gauge-wrap">
+        <div class="acc">85.7<span style="font-size:28px;">%</span></div>
+        <div class="cap">Correct on 9,917 held-out test reviews</div>
+      </div>
+      <div>
+        <svg class="chart" id="lossChart" viewBox="0 0 560 260"></svg>
+        <div class="chart-caption">Training loss per epoch — noisy early on, then trends down with a dip at epoch 8.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="next">
+    <span class="eyebrow pos">Next Steps</span>
+    <h2>Where this model could go from here.</h2>
+    <ul class="steps">
+      <li><div class="stitle">Fix stopword removal</div><div class="sdesc">Current substring-based removal can strip letters out of unrelated words — rebuilding from filtered tokens is safer.</div></li>
+      <li><div class="stitle">Use word embeddings</div><div class="sdesc">A single TF-IDF vector as one timestep doesn't let the RNN use its sequential strength — real word sequences with embeddings would.</div></li>
+      <li><div class="stitle">Try LSTM / GRU</div><div class="sdesc">Better than vanilla RNN at capturing longer-range dependencies in review text.</div></li>
+      <li><div class="stitle">Bidirectional RNN</div><div class="sdesc">Sentiment often depends on context from both directions in a sentence.</div></li>
+      <li><div class="stitle">Fine-tune a transformer</div><div class="sdesc">A pretrained model like DistilBERT would likely push accuracy well past 85.67%, at the cost of more compute.</div></li>
+    </ul>
+  </section>
+
+  <footer>
+    <p class="fnote">Built with PyTorch &amp; NLTK · Full code and notebook in the repository README.</p>
+  </footer>
+</div>
+
+<script>
+const losses = [0.248, 0.280, 0.252, 0.225, 0.295, 0.219, 0.176, 0.127, 0.155, 0.194];
+const svg = document.getElementById('lossChart');
+const W=560, H=260, padL=44, padB=32, padT=16, padR=16;
+const maxL = Math.max(...losses), minL = Math.min(...losses);
+const xStep = (W-padL-padR)/(losses.length-1);
+const yScale = v => H-padB - ((v-minL)/(maxL-minL||1))*(H-padT-padB);
+let path = losses.map((v,i)=>`${i===0?'M':'L'} ${padL+i*xStep} ${yScale(v)}`).join(' ');
+
+let svgHTML = `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#3a2e3f" stroke-width="1"/>`;
+svgHTML += `<path d="${path}" fill="none" stroke="#7fa86f" stroke-width="2.5"/>`;
+losses.forEach((v,i)=>{
+  svgHTML += `<circle cx="${padL+i*xStep}" cy="${yScale(v)}" r="3.5" fill="#c4515c"/>`;
+  if(i%2===0 || i===losses.length-1){
+    svgHTML += `<text x="${padL+i*xStep}" y="${H-padB+18}" fill="#9c8fa0" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="middle">${i+1}</text>`;
+  }
+});
+svgHTML += `<text x="${padL}" y="${padT-2}" fill="#9c8fa0" font-size="10" font-family="IBM Plex Mono, monospace">${maxL.toFixed(3)}</text>`;
+svgHTML += `<text x="${padL}" y="${H-padB}" fill="#9c8fa0" font-size="10" font-family="IBM Plex Mono, monospace">${minL.toFixed(3)}</text>`;
+svg.innerHTML = svgHTML;
+</script>
+</body>
+</html>
